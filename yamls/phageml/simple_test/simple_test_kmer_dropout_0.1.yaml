@@ -1,0 +1,106 @@
+HOME_PATH: ${oc.env:GENALM_HOME}
+output_dir: ${HOME_PATH}/runs/regression/modernGENA/
+
+batch_size: 8
+total_batch_size: 64
+
+# --- MODEL ---
+model:
+  _target_: "finetuning.annotation_model.AnnotationModel"
+  output_dir: ${output_dir}
+  config: null  # Path to the BERT configuration file; null will load from huggingface
+  modernbert_cpt: "/home/jovyan/shares/SR003.nfs2/caduseus_artem/phage/ModernBERT/phage/ckpt/base_metavr_kmer/"
+  pretrained_cpt: null
+
+  classifier:
+    _target_: "finetuning.annotation_model.Linear_Classifier_with_dropout"
+    num_labels: 1
+    num_layers: 1  # Number of layers
+    classifier_dropout: 0.1  # Dropout rate
+
+  activation:
+    _target_: "torch.nn.Identity"
+
+  # Loss-fct: nn.MSELoss + CLS-pooling
+  loss_fct:
+    _target_: "finetuning.regression_loss.CLSMSELossDict"
+    cls_pos: 0
+
+
+# --- DATASETS ---
+
+train_dataset:
+  _target_: "finetuning.simple_test_dataset.RegressionScoringDataset"
+  max_length: 1024
+  data_path: "/home/jovyan/shares/SR003.nfs2/caduseus_artem/phage/ModernBERT/finetuning/datasets/test_dataset/train.hdf5"
+  tokenizer:
+    _target_: "transformers.AutoTokenizer.from_pretrained"
+    pretrained_model_name_or_path: "/home/jovyan/shares/SR003.nfs2/caduseus_artem/phage/ModernBERT/data/tokenizers/6mer"
+
+valid_dataset:
+  _target_: "finetuning.simple_test_dataset.RegressionScoringDataset"
+  max_length: 1024
+  data_path: "/home/jovyan/shares/SR003.nfs2/caduseus_artem/phage/ModernBERT/finetuning/datasets/test_dataset/test.hdf5"
+  tokenizer:
+    _target_: "transformers.AutoTokenizer.from_pretrained"
+    pretrained_model_name_or_path: "/home/jovyan/shares/SR003.nfs2/caduseus_artem/phage/ModernBERT/data/tokenizers/6mer"
+
+
+
+# --- HF TrainingArguments ---
+TrainingArguments:
+  _target_: transformers.TrainingArguments
+  output_dir: ${output_dir}
+
+  per_device_train_batch_size: ${batch_size}
+  per_device_eval_batch_size: ${batch_size}
+
+  gradient_accumulation_steps:
+    _target_: finetuning.train_with_accelerate.gradient_accumulation_steps
+    batch_size: ${batch_size}
+    total_batch_size: ${total_batch_size}
+
+  dataloader_num_workers: 4
+  dataloader_pin_memory: false
+  remove_unused_columns: false
+
+  # eval/checkpoints
+  load_best_model_at_end: true
+  metric_for_best_model: "eval_loss"
+  save_strategy: "steps"
+  eval_strategy: "steps"
+  save_steps: 250
+  eval_steps: 250
+  save_total_limit: 2
+
+  # optimization
+  num_train_epochs: 20
+  learning_rate: 1e-5
+  weight_decay: 0.01
+  lr_scheduler_type: "cosine"
+  warmup_ratio: 0.05
+
+  # tensorboard
+  report_to: "tensorboard"
+  logging_steps: 50
+  logging_dir: ${output_dir}/tb
+
+
+# --- TRAINER ---
+trainer:
+  _target_: finetuning.custom_trainer.CustomTrainer
+  model: ${model}
+
+  data_collator:
+    _target_: hydra.utils.get_object
+    path: transformers.default_data_collator
+
+  train_dataset: ${train_dataset}
+  eval_dataset: ${valid_dataset}
+  args: ${TrainingArguments}
+
+  log_train_metrics: 50
+  train_metrics:
+    - _target_: finetuning.custom_trainer.NamedMean
+      cls_name: "loss"
+
