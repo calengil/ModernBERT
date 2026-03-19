@@ -122,7 +122,7 @@ class WeightedBCEWithLogitsLoss(nn.Module):
 class AnnotationModel(torch.nn.Module):
 	def __init__(
 		self,
-		output_dir = None, # currently unused, for compatibility with older models
+		output_dir = None,
 		config = None,
 		pretrained_cpt = None,
 		modernbert_cpt = None,
@@ -130,6 +130,7 @@ class AnnotationModel(torch.nn.Module):
 		classifier = None,
 		loss_fct = None,
 		logger = None,
+		backbone_dropout = None,
 	):		
 		super().__init__()
 
@@ -143,7 +144,7 @@ class AnnotationModel(torch.nn.Module):
 		if modernbert_cpt is not None:
 			from modernbert_utils import load_flexbert_model
 			self.logger.info(f"Loading ModernBERT model from {modernbert_cpt}")
-			self.bert = load_flexbert_model(modernbert_cpt, logger=self.logger)
+			self.bert = load_flexbert_model(modernbert_cpt, logger=self.logger, backbone_dropout=backbone_dropout,)
 			self.is_modernbert_model = True
 		else:
 			self.is_modernbert_model = False

@@ -164,6 +164,12 @@ class RegressionScoringDataset(Dataset):
 
         return torch.sigmoid(torch.tensor(z, dtype=torch.float32))
 
+    def get_target_value(self, idx: int) -> float:
+        self._ensure_open()
+        key = self._keys[idx]
+        grp = self._h5[key]
+        return float(np.asarray(grp["fn_transform"])[0])
+
     def __getitem__(self, idx: int) -> Dict[str, Any]:
         self._ensure_open()
 
@@ -191,7 +197,8 @@ class RegressionScoringDataset(Dataset):
         ###    item["token_type_ids"] = torch.zeros(self.max_length, dtype=torch.long)
 
         # IMPORTANT: key name "targets" (AnnotationModel.forward expects targets)
-        item["targets"] = y_raw #self._transform_y(y_raw)
+        #item["targets"] = y_raw #self._transform_y(y_raw)
+        item["targets"] = torch.tensor(y_raw, dtype=torch.float32)
 
         return item
 

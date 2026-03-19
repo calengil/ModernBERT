@@ -79,22 +79,36 @@ def load_modernbert_model (model_path, logger):
 	
 	return model
 
-def load_flexbert_model(model_path, logger,
-						expected_missing = {},
-						expected_unexpected = {
-							"model.head.dense.weight",
-							"model.head.norm.weight",
-							"model.decoder.weight",
-							"model.decoder.bias",
-						}):
-
+def load_flexbert_model(
+	model_path,
+	logger,
+	backbone_dropout=None,
+	expected_missing={},
+	expected_unexpected={
+		"model.head.dense.weight",
+		"model.head.norm.weight",
+		"model.decoder.weight",
+		"model.decoder.bias",
+	},
+):
 	cfg_path = os.path.join(model_path, "cfg.yaml")
 	yaml_cfg = om.load(cfg_path)
 	model_config = yaml_cfg["model"]["model_config"]
 	pretrained_model_name = "bert-base-uncased"
+
 	if isinstance(model_config, DictConfig):
-			model_config = om.to_container(model_config, resolve=True)
-	config = configuration_bert_module.FlexBertConfig.from_pretrained(pretrained_model_name, **model_config)
+		model_config = om.to_container(model_config, resolve=True)
+
+	if backbone_dropout is not None:
+		for k, v in backbone_dropout.items():
+			if k not in model_config:
+				logger.warning(f"Dropout key {k} not found in model_config, it will still be passed into config")
+			model_config[k] = float(v)
+
+	config = configuration_bert_module.FlexBertConfig.from_pretrained(
+		pretrained_model_name,
+		**model_config
+	)
 	model = FlexBertModel(config=config)
 
 	checkpoint_filepath = os.path.join(model_path, "latest-rank0.pt")	
@@ -118,7 +132,7 @@ def load_flexbert_model(model_path, logger,
 	model_state = state_dict.get("model", {})
 	assert len(model_state) > 0, "Model state is empty, please check the checkpoint and checkpoint path"
 	model_state = {k.replace("model.bert.", ""): v for k, v in model_state.items()}
-	
+
 	############# DEBUGGING CODE ##############
 	# DEBUG: get weights for the first layer of the model
 	# TODO: remove this debugging code at some point, leaving only one line:
@@ -135,7 +149,7 @@ def load_flexbert_model(model_path, logger,
 	# logger.info(f"Is it the same as in cpt? {np.allclose(debug_param, model_state[layer_name])}")
 	# logger.info(f"Debug param: {debug_param[:5]}")
 	# logger.info(f"Model state: {model_state[layer_name][:5]}")
-	
+
 	test = model.load_state_dict(model_state, strict=False)
 
 	# assert that params are changed
@@ -151,7 +165,7 @@ def load_flexbert_model(model_path, logger,
 	assert not np.allclose(debug_param_updated, debug_param), f"Params are not changed, {layer_name}\n{debug_param}\n{debug_param_updated}"
 	assert debug_param_updated.shape == debug_param.shape, "Shape mismatch"
 	############# END DEBUGGING CODE ##############
-	
+
 	# ensure that the missing and unexpected keys are as expected
 	assert len(test.missing_keys) == 0 or \
 			(set(test.missing_keys) == expected_missing and len(test.missing_keys) == len(expected_missing)), \
