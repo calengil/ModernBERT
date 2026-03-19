@@ -358,7 +358,7 @@ def make_most_frequent_codon_mutants(
 
     return mut_seqs, fn_scores
 
-biodata = '/home/jovyan/shares/SR003.nfs2/caduseus_artem/phage/ModernBERT/phage/biodata'
+biodata = '/home/jovyan/shares/SR003.nfs2/caduseus_artem/phageml/ModernBERT/downstream_tasks/phageml/biodata'
 fasta_path = f'{biodata}/sequence.fasta'
 mutations_path = f'{biodata}/mutations_effect.tsv'
 
