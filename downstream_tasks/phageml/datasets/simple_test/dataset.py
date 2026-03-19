@@ -38,7 +38,8 @@ def load_and_filter_mutation_csv(
     for col in meta_cols:
         if col in metadata_keep and metadata_keep[col] is not None:
             mask &= df[col].isin(metadata_keep[col])
-
+            
+    mask &= (df[first_library_col] != 0)
     return df.loc[mask].copy()
 
 def build_site_to_aa_to_libtuple(
