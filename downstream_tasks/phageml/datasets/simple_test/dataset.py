@@ -10,6 +10,7 @@ import torch
 import math
 import h5py
 from tqdm import tqdm
+import matplotlib.pyplot as plt
 
 _MUT_RE = re.compile(r"^([A-Za-z\*])(\d+)([A-Za-z\*])$")
 
@@ -368,15 +369,6 @@ mutation_df = load_and_filter_mutation_csv(mutations_path,
                                             metadata_keep=df_filter,
                                             first_library_col='lib1_DH10_pooled_F',
                                             sep='\t')
-'''
-site_to_aa, lib_cols = build_site_to_aa_to_libtuple(
-    mutation_df,
-    first_library_col="lib1_DH10_pooled_F",
-    mutation_col="Mutation",
-    wt_value=1.0,
-    keep_position_order="appearance",
-)
-'''
 
 
 aa_positions = unique_mutation_sites(mutation_df)
@@ -393,20 +385,10 @@ end = 36285
 cds_start = 0
 sequence = fasta.fetch(reference=chrom, start=start, end=end).upper()
 
-'''
-mut_seqs, mut_pos = generate_single_codon_variants_dedup(
-    dna_seq=sequence,
-    site_to_aa=site_to_aa,
-    cds_start_0based=cds_start,
-    aa_positions=aa_positions,
-    genetic_code_id=1,
-    include_wt=False
-)
-'''
 
 test_list = [i for i in range(1, len(sequence)//3 + 1, 10)]
 train_list = [i for i in range(1, len(sequence)//3 + 1)]
-#train_list = list(set(train_list) - set(test_list))
+train_list = list(set(train_list) - set(test_list))
 
 #print(f"len_dna = {len(sequence)}")
 #print(f"len_protein = {len(sequence)//3}")
@@ -448,43 +430,11 @@ def _transform_y(y: float, y_min=1e-2, y_max=1e2, alpha=1.0) -> torch.Tensor:
     return torch.sigmoid(torch.tensor(z, dtype=torch.float32))
 
 train_fn_scores = [_transform_y(i) for i in train_fn_scores]
-#test_fn_scores = [_transform_y(i) for i in test_fn_scores]
+test_fn_scores = [_transform_y(i) for i in test_fn_scores]
 
 print(len(train_fn_scores))
-#print(len(test_fn_scores))
+print(len(test_fn_scores))
 #raise
-
-n = len(train_fn_scores)
-test_indices = list(range(9, n, 10))
-train_indices = [i for i in range(n) if i not in test_indices]
-
-new_train_mut_seqs = [train_mut_seqs[i] for i in train_indices]
-new_test_mut_seqs = [train_mut_seqs[i] for i in test_indices]
-
-new_train_fn_scores = [train_fn_scores[i] for i in train_indices]
-new_test_fn_scores = [train_fn_scores[i] for i in test_indices]
-
-output_path = '/home/jovyan/shares/SR003.nfs2/caduseus_artem/phage/ModernBERT/finetuning/datasets/test_dataset'
-train_output = f'{output_path}/new_train.hdf5'
-with h5py.File(train_output, "a") as file:
-    for i, fn in tqdm(enumerate(new_train_fn_scores), total=len(new_train_fn_scores), desc='Processing train'):
-        group = file.create_group(f"sample_{i}") 
-        group.attrs['seq'] = new_train_mut_seqs[i]
-
-        group.create_dataset("fn_transform", data=np.array([fn], dtype=np.float64))
-
-test_output = f'{output_path}/new_test.hdf5'
-with h5py.File(test_output, "a") as file:
-    for i, fn in tqdm(enumerate(new_test_fn_scores), total=len(new_test_fn_scores), desc='Processing test'):
-        group = file.create_group(f"sample_{i}") 
-        group.attrs['seq'] = new_test_mut_seqs[i]
-
-        group.create_dataset("fn_transform", data=np.array([fn], dtype=np.float64))
-
-
-raise
-
-import matplotlib.pyplot as plt
 
 def plot_distribution(data, save_path):
 
@@ -504,8 +454,9 @@ def plot_distribution(data, save_path):
 #plot_distribution(train_fn_scores, '/home/jovyan/shares/SR003.nfs2/caduseus_artem/phage/ModernBERT/finetuning/datasets/test_dataset/train.png')
 #plot_distribution(test_fn_scores, '/home/jovyan/shares/SR003.nfs2/caduseus_artem/phage/ModernBERT/finetuning/datasets/test_dataset/test.png')
 #raise
-output_path = '/home/jovyan/shares/SR003.nfs2/caduseus_artem/phage/ModernBERT/finetuning/datasets/test_dataset'
-train_output = f'{output_path}/train.hdf5'
+
+output_path = '/home/jovyan/shares/SR003.nfs2/caduseus_artem/phageml/ModernBERT/downstream_tasks/phageml/datasets/simple_test'
+train_output = f'{output_path}/train_nonzero.hdf5'
 with h5py.File(train_output, "a") as file:
     #index_sample = 0
     for i, fn in tqdm(enumerate(train_fn_scores), total=len(train_fn_scores), desc='Processing train'):
@@ -515,7 +466,7 @@ with h5py.File(train_output, "a") as file:
         group.create_dataset("fn_transform", data=np.array([fn], dtype=np.float64))
         #index_sample += 1
 
-test_output = f'{output_path}/test.hdf5'
+test_output = f'{output_path}/test_nonzero.hdf5'
 with h5py.File(test_output, "a") as file:
     #index_sample = 0
     for i, fn in tqdm(enumerate(test_fn_scores), total=len(test_fn_scores), desc='Processing train'):
@@ -525,49 +476,3 @@ with h5py.File(test_output, "a") as file:
         group.create_dataset("fn_transform", data=np.array([fn], dtype=np.float64))
         #index_sample += 1
 
-#test code
-"""
-print(len(mutation_df))
-print(f"train = {len(train_fn_scores)}")
-print(f"test = {len(test_fn_scores)}")
-
-test_idx = 180
-print(test_fn_scores[test_idx])
-
-
-def first_difference_pos(s1, s2):
-    min_len = min(len(s1), len(s2))
-    for i in range(min_len):
-        if s1[i] != s2[i]:
-            return i
-    return min_len  # если одна строка - префикс другой
-
-str1 = sequence
-str2 = test_mut_seqs[test_idx]
-pos = first_difference_pos(str1, str2)
-print(f"Первое расхождение на позиции {pos}: '{str1[pos]}' vs '{str2[pos]}'")
-print(str1[pos-5:pos+3+3])
-print(str2[pos-5:pos+3+3])
-
-
-from Bio.Seq import Seq
-
-def translate_protein(seq, strand='+', frame=0, protein_direction='NC'):
-    seq = Seq(seq[frame:])
-
-    if strand == '-':
-        seq = seq.reverse_complement()
-
-    protein = str(seq.translate())
-
-    if strand == '-' and protein_direction != 'NC':
-        protein = protein[::-1]
-        
-    return protein
-
-str1_p = translate_protein(str1)
-str2_p = translate_protein(str2)
-
-print(str1_p[(pos-1)//3 - 3:(pos-1)//3 + 3])
-print(str2_p[(pos-1)//3 - 3:(pos-1)//3 + 3])
-"""
