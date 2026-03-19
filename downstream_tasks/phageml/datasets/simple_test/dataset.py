@@ -38,7 +38,7 @@ def load_and_filter_mutation_csv(
     for col in meta_cols:
         if col in metadata_keep and metadata_keep[col] is not None:
             mask &= df[col].isin(metadata_keep[col])
-            
+
     mask &= (df[first_library_col] != 0)
     return df.loc[mask].copy()
 
@@ -420,8 +420,8 @@ y_min=1e-2
 y_max=1e2
 alpha=1.0
 
-test_mut_seqs.append(sequence)
-test_fn_scores.append(1.0)
+#test_mut_seqs.append(sequence)
+#test_fn_scores.append(1.0)
 
 def _transform_y(y: float, y_min=1e-2, y_max=1e2, alpha=1.0) -> torch.Tensor:
     y = min(max(y, y_min), y_max)
@@ -444,7 +444,7 @@ def plot_distribution(data, save_path):
     #plt.title('')
     plt.xlabel('Fn-score transformed')
     plt.ylabel('Freq')
-    #plt.yscale('log')
+    plt.yscale('log')
     plt.grid(True)
     plt.tight_layout()
     plt.savefig(save_path, dpi=300, bbox_inches='tight')
@@ -452,8 +452,8 @@ def plot_distribution(data, save_path):
 
 #print(np.sort(test_fn_scores))
 #raise
-#plot_distribution(train_fn_scores, '/home/jovyan/shares/SR003.nfs2/caduseus_artem/phage/ModernBERT/finetuning/datasets/test_dataset/train.png')
-#plot_distribution(test_fn_scores, '/home/jovyan/shares/SR003.nfs2/caduseus_artem/phage/ModernBERT/finetuning/datasets/test_dataset/test.png')
+#plot_distribution(train_fn_scores, '/home/jovyan/shares/SR003.nfs2/caduseus_artem/phageml/ModernBERT/downstream_tasks/phageml/datasets/simple_test/plots/train_nonzero_log.png')
+#plot_distribution(test_fn_scores, '/home/jovyan/shares/SR003.nfs2/caduseus_artem/phageml/ModernBERT/downstream_tasks/phageml/datasets/simple_test/plots/test_nonzero_log.png')
 #raise
 
 output_path = '/home/jovyan/shares/SR003.nfs2/caduseus_artem/phageml/ModernBERT/downstream_tasks/phageml/datasets/simple_test'
