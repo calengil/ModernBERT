@@ -4,6 +4,7 @@ from pathlib import Path
 
 import numpy as np
 import torch
+import torch.nn as nn
 from argparse import ArgumentParser
 from hydra import initialize_config_dir, compose
 from hydra.utils import instantiate
@@ -24,6 +25,8 @@ parser = ArgumentParser()
 parser.add_argument("--config", type=str, required=True, help="path to hydra config yaml")
 parser.add_argument("--checkpoint", type=str, required=True, help="path to HF checkpoint dir (checkpoint-XXXX/)")
 parser.add_argument("--out", type=str, required=True)
+parser.add_argument("--task", type=str, required=True)
+parser.add_argument("--epoch", type=int, required=True)
 parser.add_argument("--log_level", type=int, default=logging.INFO)
 parser.add_argument("--device", type=str, default="cuda", help="cuda or cpu")
 
@@ -63,26 +66,33 @@ def collect_val_predictions(trainer, device: torch.device):
     preds_all = np.concatenate(preds_all, axis=0)
     targets_all = np.concatenate(targets_all, axis=0) if targets_all else None
 
-    #print(np.sort(targets_all))
-    #raise
     return preds_all, targets_all
 
 
-def visualize_trueFn_vs_predictedFn(x_coords, y_coords, save_path):
+def compute_mse(preds, targets):
+    preds_t = torch.as_tensor(preds, dtype=torch.float32)
+    targets_t = torch.as_tensor(targets, dtype=torch.float32)
+    mse_fn = nn.MSELoss()
+    mse = mse_fn(preds_t, targets_t)
+    return float(mse.item())
+
+
+def visualize_trueFn_vs_predictedFn(x_coords, y_coords, save_path, task, epoch, mse, corr):
 
     plt.figure(figsize=(8, 6))
     plt.scatter(x_coords, y_coords, alpha=0.7)
     plt.xlabel('True Fn transformed')
     plt.ylabel('Predicted Fn transformed')
-    #plt.title('Scatter plot из кортежей')
+    plt.title(f'{task}\nMSE={mse:.6f} | r={corr:.4f} | steps{epoch}')
     plt.plot([min(x_coords), max(x_coords)], [min(x_coords), max(x_coords)], color='red', linestyle='--')
     plt.grid(True, alpha=0.3)
     #plt.xscale('log')
     #plt.yscale('log')
+    plt.xlim([0, 1])
+    plt.ylim([0, 1])
     plt.tight_layout()
     plt.savefig(save_path, dpi=300, bbox_inches='tight')
     plt.close()
-
 
 
 def main():
@@ -113,7 +123,15 @@ def main():
     # collect predictions on eval set
     preds, targets = collect_val_predictions(trainer, device)
 
-    visualize_trueFn_vs_predictedFn(targets, preds, args.out)
+    mse = compute_mse(preds, targets)
+    logger.info(f"Validation MSE: {mse:.6f}")
+
+    # === Pearson correlation (r) ===
+    corr = np.corrcoef(targets, preds)[0, 1]
+    #print(len(preds))
+    #print(len(targets))
+    #raise
+    visualize_trueFn_vs_predictedFn(targets, preds, args.out, args.task, args.epoch, mse, corr)
 
 if __name__ == "__main__":
     main()
