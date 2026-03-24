@@ -33,3 +33,23 @@ class CLSMSELossDict(nn.Module):
             "polya": zero,
             "intragenic": zero,
         }
+
+
+
+def compute_regression_metrics(eval_pred):
+    import numpy as np
+
+    preds = np.asarray(eval_pred.predictions).reshape(-1)
+    labels = np.asarray(eval_pred.label_ids).reshape(-1)
+
+    mse = float(np.mean((preds - labels) ** 2))
+
+    if len(preds) < 2 or np.std(preds) == 0 or np.std(labels) == 0:
+        pearson = 0.0
+    else:
+        pearson = float(np.corrcoef(labels, preds)[0, 1])
+
+    return {
+        "mse": mse,
+        "pearson": pearson,
+    }

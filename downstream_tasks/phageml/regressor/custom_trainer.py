@@ -245,9 +245,45 @@ class CustomTrainer(Trainer):
         return (loss, outputs) if return_outputs else loss
 
 
+class CustomRegressionTrainer(CustomTrainer):
+    def prediction_step(self, model, inputs, prediction_loss_only, ignore_keys=None):
+        has_targets = "targets" in inputs and inputs["targets"] is not None
 
+        inputs = self._prepare_inputs(inputs)
 
-class CustomTrainerWeighted(CustomTrainer):
+        with torch.no_grad():
+            with self.compute_loss_context_manager():
+                outputs = model(
+                    input_ids=inputs["input_ids"],
+                    attention_mask=inputs["attention_mask"],
+                    targets=inputs.get("targets", None),
+                )
+
+        loss = None
+        if has_targets and hasattr(outputs, "loss") and outputs.loss is not None:
+            loss = outputs.loss.detach()
+
+        if prediction_loss_only:
+            return (loss, None, None)
+
+        preds = outputs.predicts
+        # exactly like in your inference code
+        if preds.dim() == 3:
+            preds = preds[:, 0, 0]
+        elif preds.dim() == 2:
+            preds = preds[:, 0]
+
+        preds = preds.detach()
+
+        labels = None
+        if has_targets:
+            labels = inputs["targets"]
+            if isinstance(labels, torch.Tensor):
+                labels = labels.view(-1).detach()
+
+        return (loss, preds, labels)
+
+class CustomTrainerWeighted(CustomRegressionTrainer):
     """
     weighted_sampling задаётся из YAML:
       weighted_sampling:
@@ -325,7 +361,7 @@ class CustomTrainerWeighted(CustomTrainer):
 import torch
 from torch.utils.data import WeightedRandomSampler
 
-class CustomTrainerWeightedBalancedBins(CustomTrainer):
+class CustomTrainerWeightedBalancedBins(CustomRegressionTrainer):
     def __init__(self, *args, **kwargs):
         self.weighted_sampling = kwargs.pop("weighted_sampling", None)
         super().__init__(*args, **kwargs)
@@ -437,3 +473,5 @@ class CustomTrainerWeightedBalancedBins(CustomTrainer):
             weights = torch.ones_like(weights)
 
         return weights.to(torch.double)
+    
+

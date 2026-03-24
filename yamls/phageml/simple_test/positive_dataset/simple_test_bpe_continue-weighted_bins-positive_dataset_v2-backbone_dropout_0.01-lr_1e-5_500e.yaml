@@ -1,0 +1,112 @@
+HOME_PATH: ${oc.env:GENALM_HOME}
+output_dir: ${HOME_PATH}/runs/regression/modernGENA/
+
+batch_size: 8
+total_batch_size: 64
+
+# --- MODEL ---
+model:
+  _target_: "downstream_tasks.phageml.regressor.annotation_model.AnnotationModel"
+  output_dir: ${output_dir}
+  config: null  # Path to the BERT configuration file; null will load from huggingface
+  modernbert_cpt: "/home/jovyan/shares/SR003.nfs2/caduseus_artem/phage/ModernBERT/phage/ckpt/base_metavr_bpe_continue/"
+  pretrained_cpt: null
+  backbone_dropout:
+    mlp_dropout_prob: 0.01
+    
+  classifier:
+    _target_: "downstream_tasks.phageml.regressor.annotation_model.Linear_Classifier_with_dropout"
+    num_labels: 1
+    num_layers: 1  # Number of layers
+    classifier_dropout: 0.0  # Dropout rate
+
+  activation:
+    _target_: "torch.nn.Identity"
+
+  # Loss-fct: nn.MSELoss + CLS-pooling
+  loss_fct:
+    _target_: "downstream_tasks.phageml.regressor.regression_loss.CLSMSELossDict"
+    cls_pos: 0
+
+
+# --- DATASETS ---
+
+train_dataset:
+  _target_: "downstream_tasks.phageml.regressor.simple_test_dataset.RegressionScoringDataset"
+  max_length: 1024
+  data_path: "/home/jovyan/shares/SR003.nfs2/caduseus_artem/phageml/ModernBERT/downstream_tasks/phageml/datasets/simple_test/train_v2_positive.hdf5"
+  tokenizer:
+    _target_: "transformers.AutoTokenizer.from_pretrained"
+    pretrained_model_name_or_path: "AIRI-Institute/gena-lm-bert-base-t2t"
+
+valid_dataset:
+  _target_: "downstream_tasks.phageml.regressor.simple_test_dataset.RegressionScoringDataset"
+  max_length: 1024
+  data_path: "/home/jovyan/shares/SR003.nfs2/caduseus_artem/phageml/ModernBERT/downstream_tasks/phageml/datasets/simple_test/test_v2_positive.hdf5"
+  tokenizer:
+    _target_: "transformers.AutoTokenizer.from_pretrained"
+    pretrained_model_name_or_path: "AIRI-Institute/gena-lm-bert-base-t2t"
+
+
+# --- HF TrainingArguments ---
+TrainingArguments:
+  _target_: transformers.TrainingArguments
+  output_dir: ${output_dir}
+
+  per_device_train_batch_size: ${batch_size}
+  per_device_eval_batch_size: ${batch_size}
+
+  gradient_accumulation_steps:
+    _target_: downstream_tasks.phageml.regressor.train_with_accelerate.gradient_accumulation_steps
+    batch_size: ${batch_size}
+    total_batch_size: ${total_batch_size}
+
+  dataloader_num_workers: 4
+  dataloader_pin_memory: false
+  remove_unused_columns: false
+
+  # eval/checkpoints
+  load_best_model_at_end: true
+  metric_for_best_model: "eval_loss"
+  save_strategy: "steps"
+  eval_strategy: "steps"
+  save_steps: 10560
+  eval_steps: 1056
+  save_total_limit: 5
+
+  # optimization
+  num_train_epochs: 500
+  learning_rate: 1e-5
+  weight_decay: 0.01
+  lr_scheduler_type: "cosine"
+  warmup_ratio: 0.05
+
+  # tensorboard
+  report_to: "tensorboard"
+  logging_steps: 50
+  logging_dir: ${output_dir}/tb
+
+
+
+# --- TRAINER ---
+trainer:
+  _target_: downstream_tasks.phageml.regressor.custom_trainer.CustomTrainerWeightedBalancedBins
+  model: ${model}
+
+  data_collator:
+    _target_: hydra.utils.get_object
+    path: transformers.default_data_collator
+
+  train_dataset: ${train_dataset}
+  eval_dataset: ${valid_dataset}
+  args: ${TrainingArguments}
+
+  weighted_sampling:
+    mode: balanced_bins
+    bins_edges: [0.2, 0.3, 0.4, 0.5, 0.6]
+    empty_bin_policy: skip
+
+  log_train_metrics: 50
+  train_metrics:
+    - _target_: downstream_tasks.phageml.regressor.custom_trainer.NamedMean
+      cls_name: "loss"

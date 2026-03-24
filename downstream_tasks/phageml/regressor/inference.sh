@@ -3,17 +3,19 @@
 PYTHONNOUSERSITE=1 
 #export PYTHONPATH=/home/jovyan/shares/SR003.nfs2/caduseus_artem/phageml/ModernBERT:$PYTHONPATH
 export PYTHONPATH=/home/jovyan/shares/SR003.nfs2/caduseus_artem/phage/ModernBERT:$PYTHONPATH
+BASE_DIR="/home/jovyan/shares/SR003.nfs2/caduseus_artem/phageml/output"
 
 CKPT="base_metavr_bpe_continue"
-TASK="simple_test_${CKPT}-positive_dataset_v2-lr_1e-6_200e"
-CONFIG_DIR="/home/jovyan/shares/SR003.nfs2/caduseus_artem/phageml/ModernBERT/yamls/phageml/simple_test"
-CONFIG="${CONFIG_DIR}/positive_dataset/simple_test_bpe_continue-positive_dataset_v2-lr_1e-6_200e.yaml"
+TASK="multitest_${CKPT}-weighted_bins-positive_dataset_v2-backbone_dropout_0.1-corr-lr_1e-6_200e"
+#CONFIG_DIR="/home/jovyan/shares/SR003.nfs2/caduseus_artem/phageml/ModernBERT/yamls/phageml/multitest"
+CONFIG_DIR="${BASE_DIR}/${TASK}"
+CONFIG="${CONFIG_DIR}/config.yaml"
 
 
-BASE_DIR="/home/jovyan/shares/SR003.nfs2/caduseus_artem/phageml/output"
+#BASE_DIR="/home/jovyan/shares/SR003.nfs2/caduseus_artem/phageml/output"
 OUTPUT_DIR="/home/jovyan/shares/SR003.nfs2/caduseus_artem/phageml/output/inference"
-required_steps=211200
-OUT_NAME="${TASK}-${required_steps}_steps.png"
+required_steps=62434
+OUT_NAME="${TASK}-${required_steps}_steps_train.png"
 mkdir -p $OUTPUT_DIR
 
 #TASK="simple_test_base_metavr_bpe_cosine-nonzero_dataset_v2-lr_1e-6_200e"

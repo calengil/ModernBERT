@@ -199,6 +199,7 @@ class RegressionScoringDataset(Dataset):
         # IMPORTANT: key name "targets" (AnnotationModel.forward expects targets)
         #item["targets"] = y_raw #self._transform_y(y_raw)
         item["targets"] = torch.tensor(y_raw, dtype=torch.float32)
+        #item["labels"] = item["targets"]
 
         return item
 
