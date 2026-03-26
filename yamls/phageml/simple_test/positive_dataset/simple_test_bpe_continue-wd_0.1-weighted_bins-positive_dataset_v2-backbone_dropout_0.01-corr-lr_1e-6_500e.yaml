@@ -12,7 +12,7 @@ model:
   modernbert_cpt: "/home/jovyan/shares/SR003.nfs2/caduseus_artem/phage/ModernBERT/phage/ckpt/base_metavr_bpe_continue/"
   pretrained_cpt: null
   backbone_dropout:
-    mlp_dropout_prob: 0.1
+    mlp_dropout_prob: 0.01
 
   classifier:
     _target_: "downstream_tasks.phageml.regressor.annotation_model.Linear_Classifier_with_dropout"
@@ -34,7 +34,7 @@ model:
 train_dataset:
   _target_: "downstream_tasks.phageml.regressor.simple_test_dataset.RegressionScoringDataset"
   max_length: 1024
-  data_path: "/home/jovyan/shares/SR003.nfs2/caduseus_artem/phageml/ModernBERT/downstream_tasks/phageml/datasets/multitest/train_v2_positive.hdf5"
+  data_path: "/home/jovyan/shares/SR003.nfs2/caduseus_artem/phageml/ModernBERT/downstream_tasks/phageml/datasets/simple_test/train_v2_positive.hdf5"
   tokenizer:
     _target_: "transformers.AutoTokenizer.from_pretrained"
     pretrained_model_name_or_path: "AIRI-Institute/gena-lm-bert-base-t2t"
@@ -42,7 +42,7 @@ train_dataset:
 valid_dataset:
   _target_: "downstream_tasks.phageml.regressor.simple_test_dataset.RegressionScoringDataset"
   max_length: 1024
-  data_path: "/home/jovyan/shares/SR003.nfs2/caduseus_artem/phageml/ModernBERT/downstream_tasks/phageml/datasets/multitest/test_v2_positive.hdf5"
+  data_path: "/home/jovyan/shares/SR003.nfs2/caduseus_artem/phageml/ModernBERT/downstream_tasks/phageml/datasets/simple_test/test_v2_positive.hdf5"
   tokenizer:
     _target_: "transformers.AutoTokenizer.from_pretrained"
     pretrained_model_name_or_path: "AIRI-Institute/gena-lm-bert-base-t2t"
@@ -75,9 +75,9 @@ TrainingArguments:
   save_total_limit: 3
 
   # optimization
-  num_train_epochs: 200
+  num_train_epochs: 500
   learning_rate: 1e-6
-  weight_decay: 0.01
+  weight_decay: 0.1
   lr_scheduler_type: "cosine"
   warmup_ratio: 0.05
 

@@ -6,7 +6,7 @@ total_batch_size: 64
 
 # --- MODEL ---
 model:
-  _target_: "downstream_tasks.phageml.regressor.annotation_model.AnnotationModel"
+  _target_: "downstream_tasks.phageml.regressor_multigpu.annotation_model.AnnotationModel"
   output_dir: ${output_dir}
   config: null  # Path to the BERT configuration file; null will load from huggingface
   modernbert_cpt: "/home/jovyan/shares/SR003.nfs2/caduseus_artem/phage/ModernBERT/phage/ckpt/base_metavr_bpe_continue/"
@@ -15,7 +15,7 @@ model:
     mlp_dropout_prob: 0.1
 
   classifier:
-    _target_: "downstream_tasks.phageml.regressor.annotation_model.Linear_Classifier_with_dropout"
+    _target_: "downstream_tasks.phageml.regressor_multigpu.annotation_model.Linear_Classifier_with_dropout"
     num_labels: 1
     num_layers: 1  # Number of layers
     classifier_dropout: 0.0  # Dropout rate
@@ -25,24 +25,24 @@ model:
 
   # Loss-fct: nn.MSELoss + CLS-pooling
   loss_fct:
-    _target_: "downstream_tasks.phageml.regressor.regression_loss.CLSMSELossDict"
+    _target_: "downstream_tasks.phageml.regressor_multigpu.regression_loss.CLSMSELossDict"
     cls_pos: 0
 
 
 # --- DATASETS ---
 
 train_dataset:
-  _target_: "downstream_tasks.phageml.regressor.simple_test_dataset.RegressionScoringDataset"
+  _target_: "downstream_tasks.phageml.regressor_multigpu.simple_test_dataset.RegressionScoringDataset"
   max_length: 1024
-  data_path: "/home/jovyan/shares/SR003.nfs2/caduseus_artem/phageml/ModernBERT/downstream_tasks/phageml/datasets/multitest/train_v2_positive.hdf5"
+  data_path: "/home/jovyan/shares/SR003.nfs2/caduseus_artem/phageml/ModernBERT/downstream_tasks/phageml/datasets/simple_test/test_nonzero.hdf5"
   tokenizer:
     _target_: "transformers.AutoTokenizer.from_pretrained"
     pretrained_model_name_or_path: "AIRI-Institute/gena-lm-bert-base-t2t"
 
 valid_dataset:
-  _target_: "downstream_tasks.phageml.regressor.simple_test_dataset.RegressionScoringDataset"
+  _target_: "downstream_tasks.phageml.regressor_multigpu.simple_test_dataset.RegressionScoringDataset"
   max_length: 1024
-  data_path: "/home/jovyan/shares/SR003.nfs2/caduseus_artem/phageml/ModernBERT/downstream_tasks/phageml/datasets/multitest/test_v2_positive.hdf5"
+  data_path: "/home/jovyan/shares/SR003.nfs2/caduseus_artem/phageml/ModernBERT/downstream_tasks/phageml/datasets/simple_test/test_nonzero.hdf5"
   tokenizer:
     _target_: "transformers.AutoTokenizer.from_pretrained"
     pretrained_model_name_or_path: "AIRI-Institute/gena-lm-bert-base-t2t"
@@ -57,7 +57,7 @@ TrainingArguments:
   per_device_eval_batch_size: ${batch_size}
 
   gradient_accumulation_steps:
-    _target_: downstream_tasks.phageml.regressor.train_with_accelerate.gradient_accumulation_steps
+    _target_: downstream_tasks.phageml.regressor_multigpu.train_with_accelerate_multigpu.gradient_accumulation_steps
     batch_size: ${batch_size}
     total_batch_size: ${total_batch_size}
 
@@ -69,13 +69,13 @@ TrainingArguments:
   load_best_model_at_end: true
   metric_for_best_model: "eval_valid_loss"
   eval_strategy: "epoch"
-  save_strategy: "epoch"
+  save_strategy: "best"
   #save_steps: 11780
   #eval_steps: 1178
-  save_total_limit: 3
+  save_total_limit: 2
 
   # optimization
-  num_train_epochs: 200
+  num_train_epochs: 10
   learning_rate: 1e-6
   weight_decay: 0.01
   lr_scheduler_type: "cosine"
@@ -89,7 +89,7 @@ TrainingArguments:
 
 # --- TRAINER ---
 trainer:
-  _target_: downstream_tasks.phageml.regressor.custom_trainer.CustomTrainerWeightedBalancedBins
+  _target_: downstream_tasks.phageml.regressor_multigpu.custom_trainer.CustomTrainerWeightedBalancedBins
   model: ${model}
 
   data_collator:
@@ -109,11 +109,14 @@ trainer:
 
   log_train_metrics: 50
   train_metrics:
-    - _target_: downstream_tasks.phageml.regressor.custom_trainer.NamedMean
+    - _target_: downstream_tasks.phageml.regressor_multigpu.custom_trainer.NamedMean
       cls_name: "loss"
 
   compute_metrics:
     _target_: hydra.utils.get_object
-    path: downstream_tasks.phageml.regressor.regression_loss.compute_regression_metrics
+    path: downstream_tasks.phageml.regressor_multigpu.regression_loss.compute_regression_metrics
 
-    
+  callbacks:
+    - _target_: downstream_tasks.phageml.regressor_multigpu.custom_trainer.SaveEveryNEpochsCallback
+      every_n_epochs: 2
+      extra_dir: "periodic"  

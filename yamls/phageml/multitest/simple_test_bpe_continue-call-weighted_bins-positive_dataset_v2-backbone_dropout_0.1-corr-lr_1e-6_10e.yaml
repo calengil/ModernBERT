@@ -34,7 +34,7 @@ model:
 train_dataset:
   _target_: "downstream_tasks.phageml.regressor.simple_test_dataset.RegressionScoringDataset"
   max_length: 1024
-  data_path: "/home/jovyan/shares/SR003.nfs2/caduseus_artem/phageml/ModernBERT/downstream_tasks/phageml/datasets/multitest/train_v2_positive.hdf5"
+  data_path: "/home/jovyan/shares/SR003.nfs2/caduseus_artem/phageml/ModernBERT/downstream_tasks/phageml/datasets/simple_test/test_nonzero.hdf5"
   tokenizer:
     _target_: "transformers.AutoTokenizer.from_pretrained"
     pretrained_model_name_or_path: "AIRI-Institute/gena-lm-bert-base-t2t"
@@ -42,7 +42,7 @@ train_dataset:
 valid_dataset:
   _target_: "downstream_tasks.phageml.regressor.simple_test_dataset.RegressionScoringDataset"
   max_length: 1024
-  data_path: "/home/jovyan/shares/SR003.nfs2/caduseus_artem/phageml/ModernBERT/downstream_tasks/phageml/datasets/multitest/test_v2_positive.hdf5"
+  data_path: "/home/jovyan/shares/SR003.nfs2/caduseus_artem/phageml/ModernBERT/downstream_tasks/phageml/datasets/simple_test/test_nonzero.hdf5"
   tokenizer:
     _target_: "transformers.AutoTokenizer.from_pretrained"
     pretrained_model_name_or_path: "AIRI-Institute/gena-lm-bert-base-t2t"
@@ -69,13 +69,13 @@ TrainingArguments:
   load_best_model_at_end: true
   metric_for_best_model: "eval_valid_loss"
   eval_strategy: "epoch"
-  save_strategy: "epoch"
+  save_strategy: "best"
   #save_steps: 11780
   #eval_steps: 1178
-  save_total_limit: 3
+  save_total_limit: 2
 
   # optimization
-  num_train_epochs: 200
+  num_train_epochs: 10
   learning_rate: 1e-6
   weight_decay: 0.01
   lr_scheduler_type: "cosine"
@@ -116,4 +116,7 @@ trainer:
     _target_: hydra.utils.get_object
     path: downstream_tasks.phageml.regressor.regression_loss.compute_regression_metrics
 
-    
+  callbacks:
+    - _target_: downstream_tasks.phageml.regressor.custom_trainer.SaveEveryNEpochsCallback
+      every_n_epochs: 2
+      extra_dir: "periodic"  
