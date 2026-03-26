@@ -67,7 +67,8 @@ TrainingArguments:
 
   # eval/checkpoints
   load_best_model_at_end: true
-  metric_for_best_model: "eval_valid_loss"
+  metric_for_best_model: "eval_valid_pearson"
+  greater_is_better: true
   eval_strategy: "epoch"
   save_strategy: "best"
   #save_steps: 11780
