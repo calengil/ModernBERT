@@ -1,8 +1,9 @@
 #!/bin/bash
-WORK_DIR="/home/jovyan/shares/SR003.nfs2/caduseus_artem/phageml/ModernBERT"
-OUTPUT_DIR=/home/jovyan/shares/SR003.nfs2/caduseus_artem/phageml/output
+#WORK_DIR="/home/jovyan/shares/SR003.nfs2/caduseus_artem/phageml/ModernBERT"
+OUTPUT_DIR="output/"
 
-cd $WORK_DIR
+mkdir -p $OUTPUT_DIR
+#cd $WORK_DIR
 TASK="simple_test_bpe_continue-multi-call-weighted_bins-positive_dataset_v2-backbone_dropout_0.1-corr-lr_1e-6_700e"
 
 export PYTHONNOUSERSITE=1
