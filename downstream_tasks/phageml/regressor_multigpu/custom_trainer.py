@@ -233,7 +233,7 @@ class CustomTrainer(Trainer):
         return world_size, rank
 
     def _get_worker_init_fn(self):
-        from finetuning.simple_test_dataset import worker_init_fn #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        from downstream_tasks.phageml.regressor_multigpu.simple_test_dataset import worker_init_fn #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         return worker_init_fn
 
     def _get_train_sampler(self):
